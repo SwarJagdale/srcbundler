@@ -1,0 +1,12 @@
+[package]
+name = "srcbundler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+walkdir = "2"
+minifier = "0.3.5"
+arboard = "3.4.1"
+
+
+
