@@ -2,6 +2,7 @@ use std::{fs, path::Path, env, io};
 use walkdir::WalkDir;
 use minifier::js;
 use arboard::Clipboard;
+use colored::*;
 
 fn main() {
     let src_dir = "src";
@@ -17,7 +18,6 @@ fn main() {
     let mut output = String::new();
     let mut total_chars = 0;
     let mut total_files = 0;
-    let mut last_minified_code = String::new(); // Store last minified code for clipboard copy
 
     for entry in WalkDir::new(src_dir).into_iter().filter_map(Result::ok) {
         let path = entry.path();
@@ -32,7 +32,6 @@ fn main() {
                         output.push_str(&format!("``` {relative_path}\n{minified}\n```\n"));
                         total_chars += context_length;
                         total_files += 1;
-                        last_minified_code = minified.clone(); // Store last minified file
                     }
                 }
             }
@@ -50,21 +49,24 @@ fn main() {
     println!("Total characters: {}", total_chars);
     println!("==========================\n");
 
-    // Prompt for copying minified code
-    println!("Press [C] then [Enter] to copy the last minified file to clipboard, or any other key to exit:");
+    
+        println!("{}", "[C] Copy full minified content to clipboard or [Q] to quit".cyan());
 
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    if input.trim().to_lowercase() == "c" {
-        let mut clipboard = Clipboard::new().unwrap();
-        clipboard.set_text(last_minified_code).unwrap();
-        println!("✅ Minified code copied to clipboard!");
-    }
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        let input = input.trim().to_lowercase();
+
+        if input == "c" {
+            let mut clipboard = Clipboard::new().unwrap();
+            clipboard.set_text(output.clone()).unwrap();
+            println!("✅ Full minified content copied to clipboard!\n");
+        } 
+        // }
+
 }
 
 fn minify_code(code: &str, retain_comments: bool) -> String {
     if retain_comments {
-        // Simple minification while keeping comments
         let mut result = String::new();
         let mut in_comment = false;
 
@@ -74,7 +76,7 @@ fn minify_code(code: &str, retain_comments: bool) -> String {
                 result.push_str(line);
                 result.push('\n');
             } else {
-                let minified_line = trimmed; // Remove extra spaces but keep comments
+                let minified_line = trimmed;
                 if !minified_line.is_empty() {
                     result.push_str(minified_line);
                     result.push('\n');
