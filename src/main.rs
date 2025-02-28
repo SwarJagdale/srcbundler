@@ -1,14 +1,28 @@
-use std::{fs, path::Path, env, io};
+use std::{fs, path::Path, io};
+use clap::{Arg, Command,ArgAction};
 use walkdir::WalkDir;
-use minifier::{js, css};
+use minifier::js;
+use minifier::css;
 use arboard::Clipboard;
 use colored::*;
 
 fn main() {
+    let matches = Command::new("SrcBundler")
+        .version("1.0")
+        .author("Your Name")
+        .about("Minifies and combines web development source files")
+        .arg(Arg::new("keep-comments")
+            .long("keep-comments")
+            .help("Retains comments in minified files").action(ArgAction::SetTrue),)
+        .arg(Arg::new("save")
+            .long("save")
+            .value_name("FILE")
+            .help("Saves output to a specified file"))
+        .get_matches();
+
     let src_dir = "src";
-    let args: Vec<String> = env::args().collect();
-    let retain_comments = args.contains(&"--keep-comments".to_string());
-    let save_to_file = args.iter().position(|arg| arg == "--save").map(|i| args.get(i + 1)).flatten();
+    let retain_comments = matches.get_flag("keep-comments");
+    let save_to_file = matches.get_one::<String>("save").map(|s| s.as_str());
 
     if !Path::new(src_dir).exists() {
         eprintln!("Error: src directory not found");
@@ -29,8 +43,7 @@ fn main() {
                         let relative_path = path.strip_prefix(src_dir).unwrap().to_string_lossy();
                         let context_length = minified.chars().count();
 
-                        output.push_str(&format!("``` {relative_path}\n{minified}\n```
-"));
+                        output.push_str(&format!("``` {relative_path}\n{minified}\n```\n"));
                         total_chars += context_length;
                         total_files += 1;
                     }

@@ -8,6 +8,7 @@ walkdir = "2"
 minifier = "0.3.5"
 arboard = "3.4.1"
 colored = "3.0.0"
+clap = { version = "4.3", features = ["derive"] }
 
 
 
