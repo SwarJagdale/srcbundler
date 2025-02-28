@@ -6,9 +6,9 @@ use colored::*;
 
 fn main() {
     let src_dir = "src";
-    let output_file = "output.txt";
     let args: Vec<String> = env::args().collect();
     let retain_comments = args.contains(&"--keep-comments".to_string());
+    let save_to_file = args.iter().position(|arg| arg == "--save").map(|i| args.get(i + 1)).flatten();
 
     if !Path::new(src_dir).exists() {
         eprintln!("Error: src directory not found");
@@ -38,31 +38,30 @@ fn main() {
         }
     }
 
-    if let Err(e) = fs::write(output_file, &output) {
-        eprintln!("Error writing to file: {}", e);
-        std::process::exit(1);
-    }
-
-    // Print Stats
     println!("\n==========================");
     println!("Processed {} files.", total_files);
     println!("Total characters: {}", total_chars);
     println!("==========================\n");
 
-    
-        println!("{}", "[C] Copy full minified content to clipboard or [Q] to quit".cyan());
+    if let Some(filename) = save_to_file {
+        if let Err(e) = fs::write(filename, &output) {
+            eprintln!("Error writing to file: {}", e);
+            std::process::exit(1);
+        }
+        println!("✅ Output saved to {}", filename);
+    }
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        let input = input.trim().to_lowercase();
+    println!("{}", "[C] Copy full minified content to clipboard or [Q] to quit".cyan());
 
-        if input == "c" {
-            let mut clipboard = Clipboard::new().unwrap();
-            clipboard.set_text(output.clone()).unwrap();
-            println!("✅ Full minified content copied to clipboard!\n");
-        } 
-        // }
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    let input = input.trim().to_lowercase();
 
+    if input == "c" {
+        let mut clipboard = Clipboard::new().unwrap();
+        clipboard.set_text(output.clone()).unwrap();
+        println!("✅ Full minified content copied to clipboard!\n");
+    }
 }
 
 fn minify_code(code: &str, retain_comments: bool) -> String {
