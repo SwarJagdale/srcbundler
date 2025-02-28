@@ -1,6 +1,6 @@
 use std::{fs, path::Path, env, io};
 use walkdir::WalkDir;
-use minifier::js;
+use minifier::{js, css};
 use arboard::Clipboard;
 use colored::*;
 
@@ -23,13 +23,14 @@ fn main() {
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
-                if ext == "js" || ext == "ts" || ext == "jsx" || ext == "tsx" {
+                if ext == "js" || ext == "ts" || ext == "jsx" || ext == "tsx" || ext == "css" {
                     if let Ok(content) = fs::read_to_string(path) {
-                        let minified = minify_code(&content, retain_comments);
+                        let minified = minify_code(&content, retain_comments, ext.to_str().unwrap());
                         let relative_path = path.strip_prefix(src_dir).unwrap().to_string_lossy();
                         let context_length = minified.chars().count();
 
-                        output.push_str(&format!("``` {relative_path}\n{minified}\n```\n"));
+                        output.push_str(&format!("``` {relative_path}\n{minified}\n```
+"));
                         total_chars += context_length;
                         total_files += 1;
                     }
@@ -64,32 +65,40 @@ fn main() {
     }
 }
 
-fn minify_code(code: &str, retain_comments: bool) -> String {
-    if retain_comments {
-        let mut result = String::new();
-        let mut in_comment = false;
+fn minify_code(code: &str, retain_comments: bool, file_type: &str) -> String {
+    match file_type {
+        "css" => match css::minify(code) {
+            Ok(minified) => minified.to_string(),
+            Err(_) => code.to_string(),
+        },
+        _ => {
+            if retain_comments {
+                let mut result = String::new();
+                let mut in_comment = false;
 
-        for line in code.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("//") || in_comment {
-                result.push_str(line);
-                result.push('\n');
-            } else {
-                let minified_line = trimmed;
-                if !minified_line.is_empty() {
-                    result.push_str(minified_line);
-                    result.push('\n');
+                for line in code.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("//") || in_comment {
+                        result.push_str(line);
+                        result.push('\n');
+                    } else {
+                        let minified_line = trimmed;
+                        if !minified_line.is_empty() {
+                            result.push_str(minified_line);
+                            result.push('\n');
+                        }
+                    }
+                    if line.contains("/*") {
+                        in_comment = true;
+                    }
+                    if line.contains("*/") {
+                        in_comment = false;
+                    }
                 }
-            }
-            if line.contains("/*") {
-                in_comment = true;
-            }
-            if line.contains("*/") {
-                in_comment = false;
+                result
+            } else {
+                js::minify(code).to_string()
             }
         }
-        result
-    } else {
-        js::minify(code).to_string()
     }
 }
