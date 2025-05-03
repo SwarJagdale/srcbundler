@@ -88,9 +88,13 @@ fn main() {
 
     
     let extensions = if let Some(ext_arg) = matches.get_one::<String>("ext") {
-        ext_arg.split(',')
-            .map(|s| s.trim().to_string())
-            .collect::<Vec<String>>()
+        if ext_arg.trim() == "*" {
+            vec!["*".to_string()]  // Special case for all files
+        } else {
+            ext_arg.split(',')
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>()
+        }
     } else {
         get_config().extensions
     };
@@ -107,17 +111,26 @@ fn main() {
     for entry in WalkDir::new(src_dir).into_iter().filter_map(Result::ok) {
         let path = entry.path();
         if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if extensions.contains(&ext.to_string_lossy().to_string()) {
-                    if let Ok(content) = fs::read_to_string(path) {
-                        let minified = minify_code(&content, retain_comments, ext.to_str().unwrap());
-                        let relative_path = path.strip_prefix(src_dir).unwrap().to_string_lossy();
-                        let context_length = minified.chars().count();
+            let should_process = if extensions.contains(&"*".to_string()) {
+                true  // Process all files when * is specified
+            } else if let Some(ext) = path.extension() {
+                extensions.contains(&ext.to_string_lossy().to_string())
+            } else {
+                false
+            };
 
-                        output.push_str(&format!("``` {relative_path}\n{minified}\n```\n"));
-                        total_chars += context_length;
-                        total_files += 1;
-                    }
+            if should_process {
+                if let Ok(content) = fs::read_to_string(path) {
+                    let ext = path.extension()
+                        .map(|e| e.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "txt".to_string());
+                    let minified = minify_code(&content, retain_comments, &ext);
+                    let relative_path = path.strip_prefix(src_dir).unwrap().to_string_lossy();
+                    let context_length = minified.chars().count();
+
+                    output.push_str(&format!("``` {relative_path}\n{minified}\n```\n"));
+                    total_chars += context_length;
+                    total_files += 1;
                 }
             }
         }
